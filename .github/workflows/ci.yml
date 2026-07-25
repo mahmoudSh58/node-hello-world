@@ -19,10 +19,18 @@ jobs:
         with:
           node-version: "18"
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
       - name: Build artifact
         run: npm pack
+        if: success()
       - name: Run tests
         run: npm test --if-present
+        if: success()
       - name: Build Docker image
         run: docker build -t node-hello-world:${{ github.sha }} .
+        if: success()
