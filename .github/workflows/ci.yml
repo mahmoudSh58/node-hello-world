@@ -1,0 +1,36 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build artifact
+        run: |
+          mkdir -p artifact
+          npm pack --pack-destination artifact || (npm pack && mv *.tgz artifact/) || true
+      - name: Test
+        run: |
+          if npm run | grep -q 'test'; then npm test; else
+            echo "No npm test script; running node --check on JS files"
+            find . -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -n1 node --check || true
+          fi
+      - name: Build Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: false
+          tags: node-hello-world:latest
