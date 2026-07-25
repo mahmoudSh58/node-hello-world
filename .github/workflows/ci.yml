@@ -1,0 +1,43 @@
+name: CI
+on: [workflow_dispatch]
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install deps
+        run: npm ci
+      - name: Build artifact
+        run: |
+          if npm run | grep -q ' build'; then
+            npm run build
+          fi
+          npm pack
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-artifact
+          path: '*.tgz'
+      - name: Run tests or syntax check
+        run: |
+          if npm run | grep -q ' test'; then
+            npm test
+          else
+            echo "No test script; running node --check"
+            find . -name '*.js' -not -path './node_modules/*' -exec node --check {} +
+          fi
+      - name: Build Docker image
+        run: |
+          docker build -t node-hello-world:latest .
+      - name: Save Docker image
+        run: |
+          docker save node-hello-world:latest -o image.tar
+      - name: Upload docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: image.tar
